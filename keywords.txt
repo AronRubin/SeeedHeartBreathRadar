@@ -1,0 +1,22 @@
+#######################################
+# Datatypes (KEYWORD1)
+#######################################
+
+SeeedHeartBreathRadar	KEYWORD1	SeeedHeartBreathRadar
+
+#######################################
+# Methods and Functions (KEYWORD2)
+#######################################
+
+begin	KEYWORD2	SeeedHeartBreathRadar
+recvRadarBytes	KEYWORD2	SeeedHeartBreathRadar
+getHeartRate	KEYWORD2	SeeedHeartBreathRadar
+getRespiratoryRate	KEYWORD2	SeeedHeartBreathRadar
+getHeartRateState	KEYWORD2	SeeedHeartBreathRadar
+getRespiratoryState	KEYWORD2	SeeedHeartBreathRadar
+getDistance	KEYWORD2	SeeedHeartBreathRadar
+getAngles	KEYWORD2	SeeedHeartBreathRadar
+
+#######################################
+# Constants (LITERAL1)
+#######################################
