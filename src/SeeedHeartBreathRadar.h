@@ -215,7 +215,7 @@ Field Name      |    | bytes  | Description
     VS_DETECTING = 0x04  //Radar detection in progress
   };
 
-  const char *vitalsStateValToString( VitalsStateVal state ) {
+  static const char *vitalsStateValToString( VitalsStateVal state ) {
     switch (state) {
     case VS_NORMAL: return "normal";
     case VS_HIGH: return "high";
@@ -259,7 +259,7 @@ Field Name      |    | bytes  | Description
     return m_hr_state;
   }
 
-  unsigned getRespiratoryState() const {
+  VitalsStateVal getRespiratoryState() const {
     return m_rr_state;
   }
 
@@ -270,6 +270,15 @@ Field Name      |    | bytes  | Description
   stdmissing::pair<unsigned, unsigned> getAngles() const {
     return { m_angles.first, m_angles.second };
   }
+
+  unsigned getMovementLevel() const {
+    return m_movementLevel;
+  }
+
+  MovementVal getMovementState() const {
+    return m_movementState;
+  }
+
 
   bool sendFrame( const Frame &frame );
   bool requestProductInfo( ProductInfoOpertion op );
@@ -302,7 +311,9 @@ protected:
   VitalsStateVal m_rr_state = VS_UNKNOWN;
   unsigned m_distance = 0;
   stdmissing::pair<unsigned, unsigned> m_angles;
-  unsigned m_feature = 0;
+
+  unsigned m_movementLevel = 0;
+  MovementVal m_movementState = MV_NONE;
 
 };
 
