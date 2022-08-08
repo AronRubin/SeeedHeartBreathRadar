@@ -107,7 +107,7 @@ bool SeeedHeartBreathRadar::handlePersonInfoFrame() {
     Serial.println( m_angles.second );
     break;
   case OD_GET_MOVEMENT_STATE:
-    Serial.println( movementValToString( (MovementVal)m_frame.payloadbuf1[0] );
+    Serial.println( movementValToString( (MovementVal)m_frame.payloadbuf1[0] ) );
     break;
   case OD_GET_MOVEMENT_LEVEL:
     Serial.println( (unsigned)m_frame.payloadbuf1[0] );
