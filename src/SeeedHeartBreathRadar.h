@@ -279,7 +279,14 @@ Field Name      |    | bytes  | Description
     return m_movementState;
   }
 
+  unsigned getDebugLevel() const {
+    return m_debugLevel;
+  }
 
+  void setDebugLevel( unsigned level ) {
+    m_debugLevel = level;
+  }
+  
   bool sendFrame( const Frame &frame );
   bool requestProductInfo( ProductInfoOpertion op );
   bool requestOperatingStatus();
@@ -299,6 +306,10 @@ protected:
   bool handleSleepInfoFrame();
   bool handleFrame();
 
+  static constexpr uint8_t calcCrc( uint8_t current, uint8_t next );
+  static constexpr uint8_t calcCrc( uint8_t current, const uint8_t *next, size_t nextLen );
+
+  unsigned m_debugLevel = 1;
   Stream *m_serial = nullptr;
   size_t m_framePos = 0;
   uint8_t m_runningSum = 0;
@@ -310,6 +321,7 @@ protected:
   unsigned m_rr = 0;
   VitalsStateVal m_rr_state = VS_UNKNOWN;
   unsigned m_distance = 0;
+  bool m_outOfRange = false;
   stdmissing::pair<unsigned, unsigned> m_angles;
 
   unsigned m_movementLevel = 0;

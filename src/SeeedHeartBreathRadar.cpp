@@ -17,23 +17,40 @@ void SeeedHeartBreathRadar::resetFrame() {
   m_calcChecksum = 0;
 }
 
+constexpr uint8_t SeeedHeartBreathRadar::calcCrc( uint8_t current, uint8_t next ) {
+  return 0xFF & (current + next);
+}
+
+constexpr uint8_t SeeedHeartBreathRadar::calcCrc( uint8_t current, const uint8_t *next, size_t nextLen ) {
+  while (nextLen > 0) {
+    current = calcCrc( current, *next );
+    next++;
+    nextLen--;
+  }
+  return current;
+}
+
 bool SeeedHeartBreathRadar::recvRadarBytes() {
   while (m_serial->available() > 0) {
     uint8_t nextByte = (uint8_t)m_serial->read();
-    m_runningSum = 0xFF & (m_runningSum + nextByte);
+    m_runningSum = calcCrc( m_runningSum, nextByte );
     m_framePos++;
     if (m_framePos == 1) {
       m_frame.head[0] = nextByte;
       if (m_frame.head[0] != HEAD_0) {
         resetFrame();
-        Serial.printf( "byte %02X \n", m_frame.head[0] );
+        if (m_debugLevel > 0) {
+          Serial.printf( "byte %02X \n", m_frame.head[0] );
+        }
       }
     } else if (m_framePos == 2) {
       m_frame.head[1] = nextByte;
       if (m_frame.head[1] == HEAD_1) {
         //Serial.printf( "msg { %02X%02X, ", m_frame.head[0], m_frame.head[1] );
       } else {
-        Serial.printf( "byte %02X \n", m_frame.head[1] );
+        if (m_debugLevel > 1) {
+          Serial.printf( "byte %02X \n", m_frame.head[1] );
+        }
         resetFrame();
       }
     } else if (m_framePos == 3) {
@@ -56,7 +73,9 @@ bool SeeedHeartBreathRadar::recvRadarBytes() {
       #endif
       // regect frames that proport to be too long
       if (m_frame.length > 2048) {
-        Serial.printf( "Frame too long %u \n", (unsigned)m_frame.length );
+        if (m_debugLevel > 0) {
+          Serial.printf( "Frame too long %u \n", (unsigned)m_frame.length );
+        }
         resetFrame();
       } else if (m_frame.length > sizeof(m_frame.payloadbuf1)) {
         if (m_extPayloadBuf) {
@@ -76,7 +95,9 @@ bool SeeedHeartBreathRadar::recvRadarBytes() {
     } else if (m_framePos >= 7 && m_framePos == m_frame.length + 7U) {
       m_frame.checksum = nextByte;
       if (m_frame.checksum != m_calcChecksum) {
-        Serial.printf( "checksum mismatch: expected %u got %u\n", (unsigned)m_calcChecksum, (unsigned)m_frame.checksum );
+        if (m_debugLevel > 0) {
+          Serial.printf( "checksum mismatch: expected %u got %u\n", (unsigned)m_calcChecksum, (unsigned)m_frame.checksum );
+        }
       }
     } else if (m_framePos >= 8 && m_framePos == m_frame.length + 8U) {
       m_frame.foot[0] = nextByte;
@@ -86,7 +107,9 @@ bool SeeedHeartBreathRadar::recvRadarBytes() {
         //Serial.printf( "msg { %02X%02X %02X %02X, %u, val=%u \n", m_frame.head[0], m_frame.head[1], m_frame.topic, m_frame.op, (unsigned)m_frame.length, (unsigned)m_frame.payloadbuf1[0] );
         handleFrame();
       } else {
-        Serial.printf( " invalid packet footer %02X%02X (in msg %02X %02X, %u, val=%u)\n", m_frame.foot[0], m_frame.foot[1], m_frame.topic, m_frame.op, (unsigned)m_frame.length, (unsigned)m_frame.payloadbuf1[0] );
+        if (m_debugLevel > 0) {
+          Serial.printf( " invalid packet footer %02X%02X (in msg %02X %02X, %u, val=%u)\n", m_frame.foot[0], m_frame.foot[1], m_frame.topic, m_frame.op, (unsigned)m_frame.length, (unsigned)m_frame.payloadbuf1[0] );
+        }
       }
       resetFrame();
     }
@@ -95,39 +118,51 @@ bool SeeedHeartBreathRadar::recvRadarBytes() {
 }
 
 bool SeeedHeartBreathRadar::handlePersonInfoFrame() {
-  Serial.print( "Human detection " );
-  Serial.print( personInfoOperationToString( (PersonInfoOperation)m_frame.op ) );
-  Serial.print( " " );
+  if (m_debugLevel > 1) {
+    Serial.print( "Human detection " );
+    Serial.print( personInfoOperationToString( (PersonInfoOperation)m_frame.op ) );
+    Serial.print( " " );
+  }
   switch (m_frame.op) {
   case OD_GET_ANGLE:
     m_angles.first = (unsigned)((m_frame.payloadbuf1[0] << 8) | m_frame.payloadbuf1[1]);
     m_angles.second = (unsigned)((m_frame.payloadbuf1[2] << 8) | m_frame.payloadbuf1[3]);
-    Serial.print( m_angles.first );
-    Serial.print( " x " );
-    Serial.println( m_angles.second );
+    if (m_debugLevel > 1) {
+      Serial.print( m_angles.first );
+      Serial.print( " x " );
+      Serial.println( m_angles.second );
+    }
     break;
   case OD_GET_MOVEMENT_STATE:
     m_movementState = (MovementVal)m_frame.payloadbuf1[0];
-    Serial.println( movementValToString( m_movementState ) );
+    if (m_debugLevel > 1) {
+      Serial.println( movementValToString( m_movementState ) );
+    }
     break;
   case OD_GET_MOVEMENT_LEVEL:
     m_movementLevel = m_frame.payloadbuf1[0];
-    Serial.println( (unsigned)m_frame.payloadbuf1[0] );
+    if (m_debugLevel > 1) {
+      Serial.println( (unsigned)m_frame.payloadbuf1[0] );
+    }
     break;
   case OD_GET_DISTANCE:
     m_distance = (unsigned)((m_frame.payloadbuf1[0] << 8) | m_frame.payloadbuf1[1]);
-    Serial.println( m_distance );
+    if (m_debugLevel > 1) {
+      Serial.println( m_distance );
+    }
     break;
   default:
-    if (m_frame.length == 1 ) {
-      Serial.println( m_frame.payloadbuf1[0] );
-    } else if (m_frame.length == 2) {
-      Serial.println( (unsigned)((m_frame.payloadbuf1[0] << 8) | m_frame.payloadbuf1[1]) );
-    } else {
-      for (size_t byte_i = 0; byte_i < m_frame.length; byte_i++) {
-        Serial.printf( "%02X ", (unsigned)m_frame.payloadbuf1[byte_i] );
+    if (m_debugLevel > 1) {
+      if (m_frame.length == 1 ) {
+        Serial.println( m_frame.payloadbuf1[0] );
+      } else if (m_frame.length == 2) {
+        Serial.println( (unsigned)((m_frame.payloadbuf1[0] << 8) | m_frame.payloadbuf1[1]) );
+      } else {
+        for (size_t byte_i = 0; byte_i < m_frame.length; byte_i++) {
+          Serial.printf( "%02X ", (unsigned)m_frame.payloadbuf1[byte_i] );
+        }
+        Serial.println( "" );
       }
-      Serial.println( "" );
     }
     break;
   }
@@ -138,33 +173,50 @@ bool SeeedHeartBreathRadar::handleRespirationInfoFrame() {
   switch (m_frame.op) {
   case OD_GET_BREATH_STATE:
     m_rr_state = (VitalsStateVal)m_frame.payloadbuf1[0];
-    Serial.print( "Breathing " );
-    Serial.println( vitalsStateValToString( (VitalsStateVal)m_frame.payloadbuf1[0] ) );
+    if (m_debugLevel > 1) {
+      Serial.print( "Breathing " );
+      Serial.println( vitalsStateValToString( m_rr_state ) );
+    }
     break;
   case OD_GET_BREATH_RATE:
-    Serial.print( "Breathing rate " );
-    Serial.println( m_frame.payloadbuf1[0] );
     m_rr = m_frame.payloadbuf1[0];
+    if (m_debugLevel > 1) {
+      Serial.print( "Breathing rate " );
+      Serial.println( m_rr );
+    }
     break;
   case OD_GET_BREATH_INTENSITY:
-    Serial.print( "Breathing intensity " );
-    Serial.println( m_frame.payloadbuf1[0] );
+    if (m_debugLevel > 1) {
+      Serial.print( "Breathing intensity " );
+      Serial.println( m_frame.payloadbuf1[0] );
+    }
     break;
   case OD_GET_BREATH_CONFIDENCE:
-    Serial.print( "Breathing confidence " );
-    Serial.println( m_frame.payloadbuf1[0] );
+    if (m_debugLevel > 1) {
+      Serial.print( "Breathing confidence " );
+      Serial.println( m_frame.payloadbuf1[0] );
+    }
     break;
   case OD_GET_BREATH_WAVE:
-    Serial.print( "Breathing wave " );
-    Serial.println( m_frame.payloadbuf1[0] );
+    if (m_debugLevel > 1) {
+      Serial.print( "Breathing wave " );
+      Serial.println( m_frame.payloadbuf1[0] );
+    }
     break;
   }
   return true;
 }
 
 bool SeeedHeartBreathRadar::handlePersonLocationAnomalyFrame() {
-  Serial.print( "person is " );
-  Serial.println( m_frame.payloadbuf1[0] ? "out of range" : "in range" );
+  m_outOfRange = ! m_frame.payloadbuf1[0];
+  if (m_outOfRange) {
+      m_distance = 0;
+  }
+
+  if (m_debugLevel > 1) {
+    Serial.print( "person is " );
+    Serial.println( m_outOfRange ? "out of range" : "in range" );
+  }
   return true;
 }
 
@@ -172,54 +224,74 @@ bool SeeedHeartBreathRadar::handleHeartInfoFrame() {
   switch (m_frame.op) {
   case OD_GET_HEART_STATE:
     m_hr_state = (VitalsStateVal)m_frame.payloadbuf1[0];
-    Serial.print( "Heartbeat " );
-    Serial.println( vitalsStateValToString( (VitalsStateVal)m_frame.payloadbuf1[0] ) );
+    if (m_debugLevel > 1) {
+      Serial.print( "Heartbeat " );
+      Serial.println( vitalsStateValToString( m_hr_state ) );
+    }
     break;
   case OD_GET_HEART_RATE:
-    Serial.print( "Heart rate " );
-    Serial.println( m_frame.payloadbuf1[0] );
     m_hr = m_frame.payloadbuf1[0];
+    if (m_debugLevel > 1) {
+      Serial.print( "Heart rate " );
+      Serial.println( m_frame.payloadbuf1[0] );
+    }
     break;
   default:
-    Serial.printf( "processing topic %s %s\n", topicToString( (ControlTopic)m_frame.topic ), heartOperationsToString( (HeartOperations)m_frame.op) );
+    if (m_debugLevel > 1) {
+      Serial.printf( "processing topic %s %s\n", topicToString( (ControlTopic)m_frame.topic ), heartOperationsToString( (HeartOperations)m_frame.op) );
+    }
     break;
   }
   return true;
 }
 
 bool SeeedHeartBreathRadar::handleHeartbeatIdFrame() {
-  Serial.printf( "processing topic %s\n", topicToString( (ControlTopic)m_frame.topic ) );
- return false;
+  if (m_debugLevel > 1) {
+    Serial.printf( "processing topic %s\n", topicToString( (ControlTopic)m_frame.topic ) );
+  }
+  return false;
 }
 
 bool SeeedHeartBreathRadar::handleProductInfoFrame() {
-  Serial.printf( "processing topic %s\n", topicToString( (ControlTopic)m_frame.topic ) );
- return false;
+  if (m_debugLevel > 1) {
+    Serial.printf( "processing topic %s\n", topicToString( (ControlTopic)m_frame.topic ) );
+  }
+  return false;
 }
 
 bool SeeedHeartBreathRadar::handleOtaUpgradeFrame() {
-  Serial.printf( "processing topic %s\n", topicToString( (ControlTopic)m_frame.topic ) );
- return false;
+  if (m_debugLevel > 1) {
+    Serial.printf( "processing topic %s\n", topicToString( (ControlTopic)m_frame.topic ) );
+  }
+  return false;
 }
 
 bool SeeedHeartBreathRadar::handleRadarTestFrame() {
-  Serial.printf( "processing topic %s\n", topicToString( (ControlTopic)m_frame.topic ) );
- return false;
+  if (m_debugLevel > 1) {
+    Serial.printf( "processing topic %s\n", topicToString( (ControlTopic)m_frame.topic ) );
+  }
+  return false;
 }
 
 bool SeeedHeartBreathRadar::handleOperatingStatusFrame() {
-  Serial.printf( "processing topic %s\n", topicToString( (ControlTopic)m_frame.topic ) );
- return false;
+  if (m_debugLevel > 1) {
+    Serial.printf( "processing topic %s\n", topicToString( (ControlTopic)m_frame.topic ) );
+  }
+  return false;
 }
 
 bool SeeedHeartBreathRadar::handleLocationInfoFrame() {
-  Serial.printf( "processing topic %s\n", topicToString( (ControlTopic)m_frame.topic ) );
- return false;
+  if (m_debugLevel > 1) {
+    Serial.printf( "processing topic %s\n", topicToString( (ControlTopic)m_frame.topic ) );
+  }
+  return false;
 }
 
 bool SeeedHeartBreathRadar::handleSleepInfoFrame() {
-  Serial.printf( "processing topic %s\n", topicToString( (ControlTopic)m_frame.topic ) );
- return false;
+  if (m_debugLevel > 1) {
+    Serial.printf( "processing topic %s\n", topicToString( (ControlTopic)m_frame.topic ) );
+  }
+  return false;
 }
 
 bool SeeedHeartBreathRadar::handleFrame() {
