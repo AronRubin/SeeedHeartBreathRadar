@@ -64,6 +64,7 @@ Field Name      |    | bytes  | Description
     CD_LOC_DET_ANOMAL   = 0x07,
     CD_HUMAN_PRESENCE   = 0x80, // human presence;
     CD_RESPIRATION_INFO = 0x81,  // respiratory heartbeat.
+    CD_FALL_DETECTION   = 0x83, // fall detection
     CD_SLEEP_INFO       = 0x84,  // sleep state
     CD_HEARTBEAT_INFO   = 0x85  // heart state.
   };
@@ -79,6 +80,7 @@ Field Name      |    | bytes  | Description
     case CD_LOC_DET_ANOMAL: return "location detection abnormality";
     case CD_HUMAN_PRESENCE: return "human presence";
     case CD_RESPIRATION_INFO: return "respiration information";
+    case CD_FALL_DETECTION: return "fall detection";
     case CD_SLEEP_INFO: return "sleep state";
     case CD_HEARTBEAT_INFO: return "heartbeat information";
     default: return "unknown";
@@ -221,6 +223,44 @@ Field Name      |    | bytes  | Description
     case VS_HIGH: return "high";
     case VS_LOW: return "low";
     case VS_DETECTING: return "detecting";
+    default: return "unknown";
+    }
+  }
+  
+  enum FallDetectionOperation : uint8_t {
+    OD_FALL_DETECTION_SWITCH       = 0x00, // 0 = set, 1 = on, 2 = off
+    OD_FALL_STATE                  = 0x01, // 0 = not, 1 = falling
+    OD_FALL_CONFIDENCE             = 0x02, // val
+    OD_FALL_LOCATION               = 0x03, // uint16[2] (x, y)
+    OD_FALL_POINT_CLOUD            = 0x04, // uint16[3] (x, y ,z)
+    OD_FALL_STATIONARY             = 0x05, // bool
+    OD_FALL_SET_PC_FREQUENCY       = 0x09, // 0 = set, 0 - 100 Hz
+    OD_FALL_DWELL_TIME             = 0x0A, // uint32 (seconds)
+    OD_FALL_DWELL_SWITCH           = 0x0B, // bool
+    OD_FALL_STATE_SWITCH_QUERY     = 0x80, // 0 = query, 1 = on, 2 = off
+    OD_FALL_STATE_QUERY            = 0x81, // 0 = query, 0 = not, 1 = falling
+    OD_FALL_CONFIDENCE_QUERY       = 0x82, // 0 = query, val
+    OD_FALL_LOCATION_QUERY         = 0x83, // 0 = query, uint16[2] (x, y)
+    OD_FALL_POINT_CLOUD_QUERY      = 0x84, // 0 = query, uint16[3] (x, y, z)
+
+  };
+
+  static const char *fallDetectionOperationToString( FallDetectionOperation op ) {
+    switch (op) {
+    case OD_FALL_DETECTION_SWITCH: return "fall detection switch";
+    case OD_FALL_STATE: return "fall state";
+    case OD_FALL_CONFIDENCE: return "fall confidence";
+    case OD_FALL_LOCATION: return "fall location";
+    case OD_FALL_POINT_CLOUD: return "point cloud";
+    case OD_FALL_STATIONARY: return "fall stationary";
+    case OD_FALL_SET_PC_FREQUENCY: return "point cloud frequency";
+    case OD_FALL_DWELL_TIME: return "fall dwell time";
+    case OD_FALL_DWELL_SWITCH: return "fall dell switch";
+    case OD_FALL_STATE_SWITCH_QUERY: return "fall state switch query";
+    case OD_FALL_STATE_QUERY: return "fall state query";
+    case OD_FALL_CONFIDENCE_QUERY: return "fall confidence query";
+    case OD_FALL_LOCATION_QUERY: return "fall location query";
+    case OD_FALL_POINT_CLOUD_QUERY: return "point cloud query";
     default: return "unknown";
     }
   }
